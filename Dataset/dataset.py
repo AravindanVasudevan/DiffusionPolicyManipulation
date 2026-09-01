@@ -11,6 +11,7 @@ IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
 class PickPlaceDataset(Dataset):
+
     def __init__(self, hdf5_path: str, obs_horizon: int = 2, action_horizon: int = 8):
 
         self.hdf5_path = hdf5_path
