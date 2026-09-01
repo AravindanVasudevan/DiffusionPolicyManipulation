@@ -13,20 +13,29 @@ IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 class PickPlaceDataset(Dataset):
     def __init__(self, hdf5_path: str, obs_horizon: int = 2, action_horizon: int = 8):
 
-        self.file = h5py.File(hdf5_path, "r")
-        self.demo_keys = list(self.file["data"].keys())
+        self.hdf5_path = hdf5_path
         self.obs_horizon = obs_horizon
         self.action_horizon = action_horizon
+        self._file = None
+        with h5py.File(hdf5_path, "r") as f:
+            self.demo_keys = list(f["data"].keys())
 
-        self.index = []
-        for key in self.demo_keys:
-            T = self.file[f"data/{key}/actions"].shape[0]
-            for t in range(T):
-                self.index.append((key, t))
+            self.index = []
+            for key in self.demo_keys:
+                T = f[f"data/{key}/actions"].shape[0]
+                for t in range(T):
+                    self.index.append((key, t))
 
-        all_actions = np.concatenate([self.file[f"data/{k}/actions"][:] for k in self.demo_keys], axis=0)
-        self.action_min = all_actions.min(axis=0)
-        self.action_max = all_actions.max(axis=0)
+            all_actions = np.concatenate([f[f"data/{k}/actions"][:] for k in self.demo_keys], axis=0)
+            self.action_min = all_actions.min(axis=0)
+            self.action_max = all_actions.max(axis=0)
+
+    @property
+    def file(self) -> h5py.File:
+
+        if self._file is None:
+            self._file = h5py.File(self.hdf5_path, "r")
+        return self._file
 
     def __len__(self):
 

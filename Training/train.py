@@ -12,14 +12,25 @@ from Model.policy import DiffusionPolicy
 
 EMA_DECAY = 0.995
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CKPT_DIR = os.path.join(SCRIPT_DIR, "checkpoints")
+
 
 def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    os.makedirs(CKPT_DIR, exist_ok=True)
 
-    dataset_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Dataset", "pick_place_demos.hdf5")
+    dataset_path = os.path.join(os.path.dirname(SCRIPT_DIR), "Dataset", "pick_place_demos.hdf5")
     dataset = PickPlaceDataset(dataset_path, obs_horizon=2, action_horizon=8)
-    loader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
+    loader = DataLoader(
+        dataset,
+        batch_size=32,
+        shuffle=True,
+        num_workers=2,
+        pin_memory=(device == "cuda"),
+        persistent_workers=True,
+    )
 
     model = DiffusionPolicy(action_dim=8, obs_horizon=2, action_horizon=8).to(device)
     ema_model = copy.deepcopy(model)
@@ -47,12 +58,12 @@ def main():
 
         print(f"epoch {epoch}: loss={epoch_loss / len(loader):.5f}")
 
-        if epoch % 50 == 0:
+        if epoch % 50 == 0 or epoch == num_epochs - 1:
             torch.save({
                 "model": ema_model.state_dict(),
                 "action_min": dataset.action_min,
                 "action_max": dataset.action_max,
-            }, f"checkpoints/checkpoint_{epoch}.pt")
+            }, os.path.join(CKPT_DIR, f"checkpoint_{epoch}.pt"))
 
 
 if __name__ == "__main__":
