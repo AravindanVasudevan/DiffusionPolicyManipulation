@@ -16,26 +16,29 @@ class PickPlaceDataset(Dataset):
         self.hdf5_path = hdf5_path
         self.obs_horizon = obs_horizon
         self.action_horizon = action_horizon
-        self._file = None
+
+        self.demos = {}
         with h5py.File(hdf5_path, "r") as f:
             self.demo_keys = list(f["data"].keys())
-
-            self.index = []
             for key in self.demo_keys:
-                T = f[f"data/{key}/actions"].shape[0]
-                for t in range(T):
-                    self.index.append((key, t))
+                g = f[f"data/{key}"]
+                self.demos[key] = {
+                    "image": g["obs/image"][:],
+                    "joint_pos": g["obs/joint_pos"][:].astype(np.float32),
+                    "joint_vel": g["obs/joint_vel"][:].astype(np.float32),
+                    "ee_pos": g["obs/ee_pos"][:].astype(np.float32),
+                    "command": g["obs/command"][:].astype(np.float32),
+                    "actions": g["actions"][:].astype(np.float32),
+                }
 
-            all_actions = np.concatenate([f[f"data/{k}/actions"][:] for k in self.demo_keys], axis=0)
-            self.action_min = all_actions.min(axis=0)
-            self.action_max = all_actions.max(axis=0)
+        self.index = []
+        for key in self.demo_keys:
+            for t in range(self.demos[key]["actions"].shape[0]):
+                self.index.append((key, t))
 
-    @property
-    def file(self) -> h5py.File:
-
-        if self._file is None:
-            self._file = h5py.File(self.hdf5_path, "r")
-        return self._file
+        all_actions = np.concatenate([self.demos[k]["actions"] for k in self.demo_keys], axis=0)
+        self.action_min = all_actions.min(axis=0)
+        self.action_max = all_actions.max(axis=0)
 
     def __len__(self):
 
@@ -44,21 +47,22 @@ class PickPlaceDataset(Dataset):
     def __getitem__(self, idx):
 
         key, t = self.index[idx]
-        T = self.file[f"data/{key}/actions"].shape[0]
+        demo = self.demos[key]
+        T = demo["actions"].shape[0]
 
         obs_idxs = [max(0, t - self.obs_horizon + 1 + i) for i in range(self.obs_horizon)]
-        image = np.stack([self.file[f"data/{key}/obs/image"][i] for i in obs_idxs]).astype(np.float32) / 255.0
+        image = demo["image"][obs_idxs].astype(np.float32) / 255.0
         image = (image - IMAGENET_MEAN) / IMAGENET_STD
         image = np.transpose(image, (0, 3, 1, 2))
 
-        joint_pos = np.stack([self.file[f"data/{key}/obs/joint_pos"][i] for i in obs_idxs])
-        joint_vel = np.stack([self.file[f"data/{key}/obs/joint_vel"][i] for i in obs_idxs])
-        ee_pos = np.stack([self.file[f"data/{key}/obs/ee_pos"][i] for i in obs_idxs])
+        joint_pos = demo["joint_pos"][obs_idxs]
+        joint_vel = demo["joint_vel"][obs_idxs]
+        ee_pos = demo["ee_pos"][obs_idxs]
 
-        command = self.file[f"data/{key}/obs/command"][t]
+        command = demo["command"][t]
 
         act_idxs = [min(T - 1, t + i) for i in range(self.action_horizon)]
-        actions = np.stack([self.file[f"data/{key}/actions"][i] for i in act_idxs])
+        actions = demo["actions"][act_idxs]
         actions_norm = 2 * (actions - self.action_min) / (self.action_max - self.action_min + 1e-8) - 1
 
         return {
