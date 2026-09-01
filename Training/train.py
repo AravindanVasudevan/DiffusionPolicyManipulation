@@ -52,7 +52,7 @@ def main():
                 "model": ema_model.state_dict(),
                 "action_min": dataset.action_min,
                 "action_max": dataset.action_max,
-            }, f"Training/checkpoints/checkpoint_{epoch}.pt")
+            }, f"checkpoints/checkpoint_{epoch}.pt")
 
 
 if __name__ == "__main__":
