@@ -1,4 +1,9 @@
 import copy
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import torch
 from torch.utils.data import DataLoader
 
@@ -12,8 +17,9 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    dataset = PickPlaceDataset("Dataset/pick_place_demos.hdf5", obs_horizon=2, action_horizon=8)
-    loader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=4)
+    dataset_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Dataset", "pick_place_demos.hdf5")
+    dataset = PickPlaceDataset(dataset_path, obs_horizon=2, action_horizon=8)
+    loader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
 
     model = DiffusionPolicy(action_dim=8, obs_horizon=2, action_horizon=8).to(device)
     ema_model = copy.deepcopy(model)
@@ -46,7 +52,7 @@ def main():
                 "model": ema_model.state_dict(),
                 "action_min": dataset.action_min,
                 "action_max": dataset.action_max,
-            }, f"Training/checkpoint_{epoch}.pt")
+            }, f"Training/checkpoints/checkpoint_{epoch}.pt")
 
 
 if __name__ == "__main__":

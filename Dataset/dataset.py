@@ -1,4 +1,4 @@
-from __future__ import anootations
+from __future__ import annotations
 
 from torch.utils.data import Dataset
 import numpy as np
@@ -38,18 +38,18 @@ class PickPlaceDataset(Dataset):
         T = self.file[f"data/{key}/actions"].shape[0]
 
         obs_idxs = [max(0, t - self.obs_horizon + 1 + i) for i in range(self.obs_horizon)]
-        image = self.file[f"data/{key}/obs/image"][obs_idxs].astype(np.float32) / 255.0
+        image = np.stack([self.file[f"data/{key}/obs/image"][i] for i in obs_idxs]).astype(np.float32) / 255.0
         image = (image - IMAGENET_MEAN) / IMAGENET_STD
         image = np.transpose(image, (0, 3, 1, 2))
 
-        joint_pos = self.file[f"data/{key}/obs/joint_pos"][obs_idxs]
-        joint_vel = self.file[f"data/{key}/obs/joint_vel"][obs_idxs]
-        ee_pos = self.file[f"data/{key}/obs/ee_pos"][obs_idxs]
+        joint_pos = np.stack([self.file[f"data/{key}/obs/joint_pos"][i] for i in obs_idxs])
+        joint_vel = np.stack([self.file[f"data/{key}/obs/joint_vel"][i] for i in obs_idxs])
+        ee_pos = np.stack([self.file[f"data/{key}/obs/ee_pos"][i] for i in obs_idxs])
 
         command = self.file[f"data/{key}/obs/command"][t]
 
         act_idxs = [min(T - 1, t + i) for i in range(self.action_horizon)]
-        actions = self.file[f"data/{key}/actions"][act_idxs]
+        actions = np.stack([self.file[f"data/{key}/actions"][i] for i in act_idxs])
         actions_norm = 2 * (actions - self.action_min) / (self.action_max - self.action_min + 1e-8) - 1
 
         return {

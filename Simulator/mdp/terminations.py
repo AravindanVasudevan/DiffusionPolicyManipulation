@@ -27,7 +27,7 @@ def object_in_target_bin(
 ) -> torch.Tensor:
     """True when the commanded object is within the target bin's footprint"""
 
-    pos = _commanded_object_pos_w(env, object_names, command_name)
+    pos = _commanded_object_pos_w(env, object_names, command_name) - env.scene.env_origins
 
     bin_pos_t = torch.tensor(bin_pos, device=pos.device)
     xy_dist = torch.norm(pos[:, :2] - bin_pos_t[:2], dim=-1)
