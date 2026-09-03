@@ -3,3 +3,5 @@ __pycache__/
 
 *.hdf5
 checkpoints
+Evaluation/videos/
+*.mp4

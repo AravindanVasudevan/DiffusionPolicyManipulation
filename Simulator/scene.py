@@ -34,6 +34,19 @@ def _spawn_cfg(shape: str, color: tuple):
     if shape == "cylinder":
         return sim_utils.CylinderCfg(radius=0.02, height=0.05, **common)
 
+def make_record_camera(width: int = 640, height: int = 480, fps: float = 30.0) -> CameraCfg:
+    
+    return CameraCfg(
+        prim_path="{ENV_REGEX_NS}/record_cam",
+        update_period=1.0 / fps,
+        height=height,
+        width=width,
+        data_types=["rgb"],
+        spawn=sim_utils.PinholeCameraCfg(focal_length=24.0, clipping_range=(0.05, 20.0)),
+        offset=CameraCfg.OffsetCfg(pos=(1.8, 1.2, 1.2), convention="world"),
+    )
+
+
 @configclass
 class PickPlaceSceneCfg(InteractiveSceneCfg):
     """Scene for the pick and place environment"""
