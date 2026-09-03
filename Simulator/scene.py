@@ -10,7 +10,7 @@ import itertools
 
 GRID_SPACING = 0.15 
 
-SHAPES = ["cube", "sphere", "cylinder"]
+SHAPES = ["cube", "cone", "cylinder"]
 COLORS = {
     "red":   (0.8, 0.1, 0.1),
     "green": (0.1, 0.7, 0.2),
@@ -29,8 +29,8 @@ def _spawn_cfg(shape: str, color: tuple):
     )
     if shape == "cube":
         return sim_utils.CuboidCfg(size=(0.045, 0.045, 0.045), **common)
-    if shape == "sphere":
-        return sim_utils.SphereCfg(radius=0.025, **common)
+    if shape == "cone":
+        return sim_utils.ConeCfg(radius=0.025, height=0.05, **common)
     if shape == "cylinder":
         return sim_utils.CylinderCfg(radius=0.02, height=0.05, **common)
 
@@ -100,7 +100,7 @@ class PickPlaceSceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.DomeLightCfg(intensity=2000.0),
     )
 
-    # 9 pickable objects: cube / sphere / cylinder, each in red / yellow / blue.
+    # 9 pickable objects: cube / cone / cylinder, each in red / yellow / blue.
     def __post_init__(self):
 
         combos = list(itertools.product(SHAPES, COLORS.items()))
