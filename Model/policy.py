@@ -63,3 +63,6 @@ class DiffusionPolicy(nn.Module):
             sample = self.scheduler.step(pred_noise, t, sample)
 
         return sample
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        return self.compute_loss(batch)
