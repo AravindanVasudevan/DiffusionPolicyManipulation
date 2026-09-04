@@ -50,6 +50,7 @@ def compute_waypoints(object_pos: torch.Tensor, bin_pos: torch.Tensor, device):
     commanded grasp/place height puts the *hand* where the *fingertips* should be, and the
     hand jams into the table/bin well above the intended contact height.
     """
+
     TCP_OFFSET = 0.1034
     approach_height = 0.15 + TCP_OFFSET
     grasp_offset = 0.0 + TCP_OFFSET
@@ -112,6 +113,7 @@ def main():
     down_quat = torch.tensor([0.0, 1.0, 0.0, 0.0], device=device).expand(env.num_envs, 4)
 
     def capture_waypoints(env_ids: torch.Tensor):
+
         if len(env_ids) == 0:
             return
         positions = torch.stack(
