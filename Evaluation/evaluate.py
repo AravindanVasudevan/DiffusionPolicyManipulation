@@ -29,6 +29,8 @@ import numpy as np
 import torch
 from isaaclab.envs import ManagerBasedRLEnv
 
+from isaaclab_assets.robots.franka import FRANKA_PANDA_HIGH_PD_CFG
+
 from Simulator.env import PickPlaceEnvCfg
 from Simulator.scene import make_record_camera
 from Model.policy import DiffusionPolicy
@@ -70,6 +72,11 @@ def main():
 
     cfg = PickPlaceEnvCfg()
     cfg.scene.num_envs = args_cli.num_envs
+    # Match collect.py's robot: the dataset was collected (and the policy trained)
+    # against the stiff-PD, gravity-disabled Franka. The scene's default robot has
+    # much softer gains and gravity on, so it can't track the same joint targets --
+    # using it here made the arm barely move regardless of what the policy predicted.
+    cfg.scene.robot = FRANKA_PANDA_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     record = not args_cli.no_record
     if record:
@@ -100,7 +107,11 @@ def main():
         target = origin + torch.tensor([0.5, 0.0, 0.05], device=device)
         env.scene["record_cam"].set_world_poses_from_view(eye.unsqueeze(0), target.unsqueeze(0))
 
-    obs_history = []
+    # obs_history holds one entry per env.step (matches PickPlaceDataset's
+    # consecutive-timestep [t-1, t] sampling) -- NOT one per exec_horizon chunk,
+    # which would space the conditioning frames exec_horizon steps apart and
+    # feed the model out-of-distribution history.
+    obs_history = [obs["policy"]]
     episodes_done = 0
 
     def grab_frame():
@@ -110,11 +121,12 @@ def main():
         if rgb is not None and rgb.shape[0] > 0:
             frames.append(rgb[0, ..., :3].to(torch.uint8).cpu().numpy())
 
-    while simulation_app.is_running():
-        policy_obs = obs["policy"]
+    def push_obs(policy_obs):
         obs_history.append(policy_obs)
         if len(obs_history) > model.obs_horizon:
             obs_history.pop(0)
+
+    while simulation_app.is_running():
         while len(obs_history) < model.obs_horizon:
             obs_history.insert(0, obs_history[0])
 
@@ -123,7 +135,7 @@ def main():
             "joint_pos": torch.stack([o["joint_pos"] for o in obs_history], dim=1),
             "joint_vel": torch.stack([o["joint_vel"] for o in obs_history], dim=1),
             "ee_pos": torch.stack([o["ee_pos"] for o in obs_history], dim=1),
-            "command": policy_obs["command"],
+            "command": obs_history[-1]["command"],
         }
 
         normalized_chunk = model.sample_actions(batch)
@@ -133,6 +145,7 @@ def main():
         for i in range(args_cli.exec_horizon):
             obs, reward, terminated, truncated, info = env.step(actions[:, i])
             grab_frame()
+            push_obs(obs["policy"])
             if terminated.any() or truncated.any():
                 done = True
                 break
@@ -140,7 +153,7 @@ def main():
         if done:
             episodes_done += 1
             print(f"[evaluate] episode {episodes_done}/{args_cli.max_episodes} finished.")
-            obs_history.clear()
+            obs_history = [obs["policy"]]
             if episodes_done >= args_cli.max_episodes:
                 break
 
