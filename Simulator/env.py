@@ -68,8 +68,8 @@ class EventsCfg:
         mode="reset",
         params={
             "object_names": OBJECT_NAMES,
-            "x_range": (0.35, 0.65),
-            "y_range": (-0.25, 0.25),
+            "x_range": (0.24, 0.80),
+            "y_range": (-0.40, 0.40),
             "min_separation": 0.09,
         },
     )
